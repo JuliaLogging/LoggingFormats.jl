@@ -4,7 +4,7 @@ This package is an aggregation of various useful format functions to use with th
 [FormatLogger](https://github.com/JuliaLogging/LoggingExtras.jl#formatlogger-sink) from the
 [LoggingExtras](https://github.com/JuliaLogging/LoggingExtras.jl) package.
 
-Currently, there are following functors available:
+Currently, the following functors are available:
 - `Truncated`
 
 ## Truncate long variables and messages
