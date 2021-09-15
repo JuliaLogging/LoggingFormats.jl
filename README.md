@@ -7,7 +7,7 @@ This package is an aggregation of various useful format functions to use with th
 Currently, the following functors are available:
 - `Truncated`
 
-## Truncate long variables and messages
+## `Truncated`: Truncate long variables and messages
 
 `Truncated(max_var_len=5_000)` is a function which formats data in similar manner as `ConsoleLogger`, 
 but with truncation of string representation when it exceeds `max_var_len`.
