@@ -1,8 +1,8 @@
 # LoggingFormats.jl
 
-This package is an aggregation of various useful functions to use used in 
-[FormatLogger](https://github.com/JuliaLogging/LoggingExtras.jl#formatlogger-sink) from package 
-[LoggingExtras](https://github.com/JuliaLogging/LoggingExtras.jl).
+This package is an aggregation of various useful format functions to use with the
+[FormatLogger](https://github.com/JuliaLogging/LoggingExtras.jl#formatlogger-sink) from the
+[LoggingExtras](https://github.com/JuliaLogging/LoggingExtras.jl) package.
 
 Currently, there are following functions available:
 - `make_log_truncated`
