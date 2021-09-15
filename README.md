@@ -23,7 +23,7 @@ julia> with_logger(FormatLogger(Truncated(30))) do
     short_var = "a"^5
     long_var = "a"^50
     @info "a short message" short_var long_var
-    @info "a very long message"^20 short_var long_var
+    @info "a very long message "^20 short_var long_var
 end
 ┌ Info: a short message
 │   short_var = aaaaa
