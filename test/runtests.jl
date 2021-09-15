@@ -2,7 +2,7 @@ using Test: @test, @testset
 using LoggingExtras, LoggingFormats
 
 @testset "Truncating" begin
-    trunc_fun = make_log_truncated(30)
+    trunc_fun = Truncated(30)
     io = IOBuffer()
     truncating_logger = FormatLogger(trunc_fun, io)
     with_logger(truncating_logger) do

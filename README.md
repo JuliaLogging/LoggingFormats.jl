@@ -4,18 +4,22 @@ This package is an aggregation of various useful format functions to use with th
 [FormatLogger](https://github.com/JuliaLogging/LoggingExtras.jl#formatlogger-sink) from the
 [LoggingExtras](https://github.com/JuliaLogging/LoggingExtras.jl) package.
 
-Currently, there are following functions available:
-- `make_log_truncated`
+Currently, there are following functors available:
+- `Truncated`
 
 ## Truncate long variables and messages
 
-`make_log_truncated(max_var_len=5_000)` is a function which formats data in similar manner as `ConsoleLogger`, 
+`Truncated(max_var_len=5_000)` is a function which formats data in similar manner as `ConsoleLogger`, 
 but with truncation of string representation when it exceeds `max_var_len`.
+This format truncates the length of message itself, and truncates string representation of 
+individual variables, but does not truncate the size of whole printed text.
+
+See the examples:
 
 ```julia
-julia> using LoggingExtras, 
+julia> using LoggingExtras, LoggingFormat
 
-julia> with_logger(FormatLogger(make_log_truncated(30))) do
+julia> with_logger(FormatLogger(Truncated(30))) do
     short_var = "a"^5
     long_var = "a"^50
     @info "a short message" short_var long_var
