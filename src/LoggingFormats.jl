@@ -17,7 +17,7 @@ function shorten_str(str::String, max_len)
         len > max_len && break
         ind = i
     end
-    return SubString(str, 1, ind)
+    return SubString(str, 1, ind) * '…'
 end
 
 struct Truncated <: Function
