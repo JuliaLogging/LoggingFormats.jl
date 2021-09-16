@@ -91,4 +91,38 @@ function (::JSON)(io, args)
     return nothing
 end
 
+############
+## logfmt ##
+############
+# See  https://brandur.org/logfmt
+
+struct LogFmt <: Function
+end
+function (::LogFmt)(io, args)
+    print(io, "level=", lvlstr(args.level),
+              " msg=\"",
+    )
+    escape_string(io, args.message isa AbstractString ? args.message : string(args.message), '"')
+    print(io, "\"",
+              " module=", something(args._module, "nothing"),
+              " file=\"",
+    )
+    escape_string(io, args.file isa AbstractString ? args.file : string(something(args.file, "nothing")), '"')
+    print(io, "\"",
+              " line=", something(args.line, "nothing"),
+              " group=\"",
+    )
+    escape_string(io, args.group isa AbstractString ? args.group : string(something(args.group, "nothing")), '"')
+    print(io, "\"",
+              " id=", something(args.id, "nothing"),
+    )
+    for (k, v) in args.kwargs
+        print(io, " ", k, "=\"")
+        escape_string(io, sprint(print, something(v, "nothing")), '"')
+        print(io, "\"")
+    end
+    println(io)
+    return nothing
+end
+
 end # module
