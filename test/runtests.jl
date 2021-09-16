@@ -1,5 +1,8 @@
 using Test: @test, @testset, @test_throws
-using LoggingExtras, LoggingFormats
+using Logging: Logging, with_logger
+using LoggingExtras: FormatLogger
+using LoggingFormats: LoggingFormats, Truncated, JSON
+import JSON3
 
 @testset "Truncating" begin
     @test LoggingFormats.shorten_str("αβγαβγ", 3) == "αβ…"
@@ -41,4 +44,53 @@ using LoggingExtras, LoggingFormats
     str = String(take!(io))
     @test occursin("│   long_var = aaaaaaaaaaaaaa…", str)
     @test occursin("│   short_var = a", str)
+end
+
+@testset "JSON" begin
+    @test LoggingFormats.lvlstr(Logging.Error + 1) == "error"
+    @test LoggingFormats.lvlstr(Logging.Error) == "error"
+    @test LoggingFormats.lvlstr(Logging.Error - 1) == "warn"
+    @test LoggingFormats.lvlstr(Logging.Warn + 1) == "warn"
+    @test LoggingFormats.lvlstr(Logging.Warn) == "warn"
+    @test LoggingFormats.lvlstr(Logging.Warn - 1) == "info"
+    @test LoggingFormats.lvlstr(Logging.Info + 1) == "info"
+    @test LoggingFormats.lvlstr(Logging.Info) == "info"
+    @test LoggingFormats.lvlstr(Logging.Info - 1) == "debug"
+    @test LoggingFormats.lvlstr(Logging.Debug + 1) == "debug"
+    @test LoggingFormats.lvlstr(Logging.Debug) == "debug"
+
+    io = IOBuffer()
+    with_logger(FormatLogger(JSON(), io)) do
+        @debug "debug msg"
+        @info "info msg"
+        @warn "warn msg"
+        @error "error msg"
+    end
+    json = [JSON3.read(x) for x in eachline(seekstart(io))]
+    @test json[1].level == "debug"
+    @test json[1].msg == "debug msg"
+    @test json[2].level == "info"
+    @test json[2].msg == "info msg"
+    @test json[3].level == "warn"
+    @test json[3].msg == "warn msg"
+    @test json[4].level == "error"
+    @test json[4].msg == "error msg"
+    for i in 1:4
+        @test json[i].line isa Int
+        @test json[i].module == "Main"
+        @test isempty(json[i].kwargs)
+    end
+
+    io = IOBuffer()
+    with_logger(FormatLogger(JSON(), io)) do
+        y = (1, 2)
+        @info "info msg" x = [1, 2, 3] y
+    end
+    json = JSON3.read(seekstart(io))
+    @test json.level == "info"
+    @test json.msg == "info msg"
+    @test json.module == "Main"
+    @test json.line isa Int
+    @test json.kwargs.x == "[1, 2, 3]"
+    @test json.kwargs.y == "(1, 2)"
 end
