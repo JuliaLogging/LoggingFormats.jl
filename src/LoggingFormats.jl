@@ -4,13 +4,20 @@ export Truncated
 
 using Logging
 
-function shorten_str(str, max_len)
-    suffix = "…"
-    if length(str) > max_len
-        str[1:nextind(str, 0, min(end, max_len-length(suffix)))] * suffix
-    else
-        str
+shorten_str(str, max_len) = shorten_str(string(str), max_len)
+function shorten_str(str::String, max_len)
+    if textwidth(str) <= max_len
+        return SubString(str)
     end
+    len = textwidth('…')
+    ind = 1
+    for i in eachindex(str)
+        c = @inbounds str[i]
+        len += textwidth(c)
+        len > max_len && break
+        ind = i
+    end
+    return SubString(str, 1, ind)
 end
 
 struct Truncated <: Function
