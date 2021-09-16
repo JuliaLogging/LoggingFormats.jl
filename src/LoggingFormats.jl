@@ -2,7 +2,11 @@ module LoggingFormats
 
 export Truncated
 
-using Logging
+import Logging, JSON3, StructTypes
+
+###############
+## Truncated ##
+###############
 
 shorten_str(str, max_len) = shorten_str(string(str), max_len)
 function shorten_str(str::String, max_len)
@@ -42,6 +46,51 @@ function (tr::Truncated)(io, args)
     println(io, "└ @ ", something(args._module, "nothing"), " ",
             something(args.file, "nothing"), ":", something(args.line, "nothing"))
     nothing
+end
+
+
+##########
+## JSON ##
+##########
+
+lvlstr(lvl::Logging.LogLevel) = lvl >= Logging.Error ? "error" :
+                                lvl >= Logging.Warn  ? "warn"  :
+                                lvl >= Logging.Info  ? "info"  :
+                                                       "debug"
+
+struct JSONLogMessage
+    level::String
+    msg::String
+    _module::Union{String,Nothing}
+    file::Union{String,Nothing}
+    line::Union{Int,Nothing}
+    group::Union{String,Nothing}
+    id::Union{String,Nothing}
+    kwargs::Dict{String,String}
+end
+function JSONLogMessage(args)
+    JSONLogMessage(
+        lvlstr(args.level),
+        args.message isa AbstractString ? args.message : string(args.message),
+        args._module === nothing ? nothing : string(args._module),
+        args.file,
+        args.line,
+        args.group === nothing ? nothing : string(args.group),
+        args.id === nothing ? nothing : string(args.id),
+        Dict{String,String}(string(k) => string(v) for (k, v) in args.kwargs)
+    )
+end
+StructTypes.StructType(::Type{JSONLogMessage}) = StructTypes.OrderedStruct()
+StructTypes.names(::Type{JSONLogMessage}) = ((:_module, :module), )
+
+struct JSON <: Function
+end
+
+function (::JSON)(io, args)
+    logmsg = JSONLogMessage(args)
+    JSON3.write(io, logmsg)
+    println(io)
+    return nothing
 end
 
 end # module

@@ -5,7 +5,22 @@ This package is an aggregation of various useful format functions to use with th
 [LoggingExtras](https://github.com/JuliaLogging/LoggingExtras.jl) package.
 
 Currently, the following functors are available:
-- `Truncated`
+- `JSON`: output log events as JSON
+- `Truncated`: truncation of log messages
+
+## `JSON`: Output log events as JSON
+
+`JSON()` is a function which formats the log message and the log metadata as JSON.
+Example:
+
+```julia
+julia> with_logger(FormatLogger(LoggingFormats.JSON(), stdout)) do
+           @info "hello, world"
+           @error "something is wrong"
+       end
+{"level":"info","msg":"hello, world","module":"Main","file":"REPL[10]","line":2,"group":"REPL[10]","id":"Main_6972c828","kwargs":{}}
+{"level":"error","msg":"something is wrong","module":"Main","file":"REPL[10]","line":3,"group":"REPL[10]","id":"Main_2289c7f9","kwargs":{}}
+```
 
 ## `Truncated`: Truncate long variables and messages
 
