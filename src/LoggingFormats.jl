@@ -22,7 +22,7 @@ Truncated() = Truncated(5_000)
 # copied from https://github.com/JuliaLang/julia/blob/v1.5.4/stdlib/Logging/src/ConsoleLogger.jl and modified
 function (tr::Truncated)(io, args)
     levelstr = args.level == Logging.Warn ? "Warning" : string(args.level)
-    msglines = split(chomp(string(shorten_str(args.message, tr.max_var_len))), '\n')
+    msglines = split(chomp(shorten_str(args.message, tr.max_var_len)), '\n')
     println(io, "┌ ", levelstr, ": ", msglines[1])
     for i in 2:length(msglines)
         str_line = sprint(print, "│ ", msglines[i])
