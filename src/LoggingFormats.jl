@@ -1,7 +1,5 @@
 module LoggingFormats
 
-export Truncated
-
 import Logging, JSON3, StructTypes
 
 ###############

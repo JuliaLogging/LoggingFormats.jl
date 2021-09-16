@@ -10,7 +10,7 @@ Currently, the following functors are available:
 
 ## `JSON`: Output log events as JSON
 
-`JSON()` is a function which formats the log message and the log metadata as JSON.
+`LoggingFormats.JSON()` is a function which formats the log message and the log metadata as JSON.
 Example:
 
 ```julia
@@ -24,7 +24,7 @@ julia> with_logger(FormatLogger(LoggingFormats.JSON(), stdout)) do
 
 ## `Truncated`: Truncate long variables and messages
 
-`Truncated(max_var_len=5_000)` is a function which formats data in similar manner as `ConsoleLogger`, 
+`LoggingFormats.Truncated(max_var_len=5_000)` is a function which formats data in similar manner as `ConsoleLogger`,
 but with truncation of string representation when it exceeds `max_var_len`.
 This format truncates the length of message itself, and truncates string representation of 
 individual variables, but does not truncate the size of whole printed text.
@@ -32,9 +32,9 @@ individual variables, but does not truncate the size of whole printed text.
 See the examples:
 
 ```julia
-julia> using LoggingExtras, LoggingFormat
+julia> using LoggingExtras, LoggingFormats
 
-julia> with_logger(FormatLogger(Truncated(30))) do
+julia> with_logger(FormatLogger(LoggingFormats.Truncated(30))) do
     short_var = "a"^5
     long_var = "a"^50
     @info "a short message" short_var long_var
