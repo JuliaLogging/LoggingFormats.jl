@@ -10,7 +10,7 @@ using LoggingExtras, LoggingFormats
 
     @test_throws ErrorException Truncated(0)
     @test_throws ErrorException Truncated(-5)
-    
+
     trunc_fun = Truncated(30)
     io = IOBuffer()
     truncating_logger = FormatLogger(trunc_fun, io)
@@ -29,7 +29,7 @@ using LoggingExtras, LoggingFormats
     end
     str = String(take!(io))
 
-    @test occursin("│   long_var = aaaaaaaaaaaa…", str)
+    @test occursin("│   long_var = aaaaaaaaaaaaaa…", str)
 
     io = IOBuffer()
     truncating_logger = FormatLogger(trunc_fun, io)
@@ -39,7 +39,6 @@ using LoggingExtras, LoggingFormats
         @info "a_message" long_var short_var
     end
     str = String(take!(io))
-
-    @test occursin("│   long_var = aaaaaaaaaaaa…", str)
+    @test occursin("│   long_var = aaaaaaaaaaaaaa…", str)
     @test occursin("│   short_var = a", str)
 end
