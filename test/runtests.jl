@@ -1,7 +1,16 @@
-using Test: @test, @testset
+using Test: @test, @testset, @test_throws
 using LoggingExtras, LoggingFormats
 
 @testset "Truncating" begin
+    @test LoggingFormats.shorten_str("αβγαβγ", 3) == "αβ…"
+    @test LoggingFormats.shorten_str("αβγαβγ", 4) == "αβγ…"
+    @test LoggingFormats.shorten_str("julia", 3) == "ju…"
+    @test LoggingFormats.shorten_str("julia", 4) == "jul…"
+    @test LoggingFormats.shorten_str("julia", 5) == "julia"
+
+    @test_throws ErrorException Truncated(0)
+    @test_throws ErrorException Truncated(-5)
+    
     trunc_fun = Truncated(30)
     io = IOBuffer()
     truncating_logger = FormatLogger(trunc_fun, io)

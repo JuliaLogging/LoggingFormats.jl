@@ -1,18 +1,21 @@
 module LoggingFormats
 
+export Truncated
+
 using Logging
 
-function shorten_str(message, max_len)
+function shorten_str(str, max_len)
     suffix = "…"
-    if length(message) > max_len
-        message[1:min(end, max_len-length(suffix))] * suffix
+    if length(str) > max_len
+        str[1:nextind(str, 0, min(end, max_len-length(suffix)))] * suffix
     else
-        message
+        str
     end
 end
 
 struct Truncated <: Function
     max_var_len::Int
+    Truncated(max_var_len) = max_var_len <= 0 ? error("max_var_len must be positive") : new(max_var_len)
 end
 Truncated() = Truncated(5_000)
 
@@ -33,7 +36,5 @@ function (tr::Truncated)(io, args)
             something(args.file, "nothing"), ":", something(args.line, "nothing"))
     nothing
 end
-
-export Truncated
 
 end # module
