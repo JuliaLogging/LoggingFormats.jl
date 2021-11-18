@@ -1,7 +1,7 @@
 using Test: @test, @testset, @test_throws
 using Logging: Logging, with_logger
 using LoggingExtras: FormatLogger
-using LoggingFormats: LoggingFormats, Truncated, JSON, LogFmt, RecursiveJSON
+using LoggingFormats: LoggingFormats, Truncated, JSON, LogFmt
 import JSON3
 
 @testset "Truncating" begin
@@ -98,9 +98,9 @@ end
     @test json.kwargs.x == "[1, 2, 3]"
     @test json.kwargs.y == "(1, 2)"
 
-    # RecursiveJSON
+    # `recursive=true`
     io = IOBuffer()
-    with_logger(FormatLogger(RecursiveJSON(), io)) do
+    with_logger(FormatLogger(JSON(; recursive=true), io)) do
         y = (1, 2)
         @info "info msg" x = [1, 2, 3] y = Dict("hi" => Dict("hi2" => [1,2]))
     end
@@ -114,7 +114,7 @@ end
 
     # Fallback to strings
      io = IOBuffer()
-     with_logger(FormatLogger(RecursiveJSON(), io)) do
+     with_logger(FormatLogger(JSON(; recursive=true), io)) do
          y = (1, 2)
          @info "info msg" x = [1, 2, 3] y = Dict("hi" => NoStructTypeDefined(1))
      end
@@ -127,7 +127,7 @@ end
     y = json.kwargs.y
     must_have = ("Dict", "\"hi\"", "=>", "NoStructTypeDefined(1)")
     @test all(h -> occursin(h, y), must_have) # avoid issues with printing changing with versions
-    @test json.kwargs.RecursiveJSONLogMessageError == "ArgumentError: NoStructTypeDefined doesn't have a defined `StructTypes.StructType`"
+    @test json.kwargs.JSONRecursionError == "ArgumentError: NoStructTypeDefined doesn't have a defined `StructTypes.StructType`"
 
 end
 

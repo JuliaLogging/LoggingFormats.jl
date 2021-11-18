@@ -47,9 +47,9 @@ function (tr::Truncated)(io, args)
 end
 
 
-############################
-## JSON and RecursiveJSON ##
-############################
+##########
+## JSON ##
+##########
 
 lvlstr(lvl::Logging.LogLevel) = lvl >= Logging.Error ? "error" :
                                 lvl >= Logging.Warn  ? "warn"  :
@@ -86,26 +86,24 @@ StructTypes.StructType(::Type{<:JSONLogMessage}) = StructTypes.OrderedStruct()
 StructTypes.names(::Type{<:JSONLogMessage}) = ((:_module, :module), )
 
 struct JSON <: Function
+    recursive::Bool
 end
 
-function (::JSON)(io, args)
-    logmsg = JSONLogMessage{String}(args)
-    JSON3.write(io, logmsg)
-    println(io)
-    return nothing
-end
+JSON(; recursive=false) = JSON(recursive)
 
-struct RecursiveJSON <: Function
-end
-
-function (::RecursiveJSON)(io, args)
-    logmsg = JSONLogMessage{Any}(args)
-    try
+function (j::JSON)(io, args)
+    if j.recursive
+        logmsg = JSONLogMessage{Any}(args)
+        try
+            JSON3.write(io, logmsg)
+        catch e
+            fallback_msg = JSONLogMessage{String}(args)
+            fallback_msg.kwargs["JSONRecursionError"] = sprint(Base.showerror, e)
+            JSON3.write(io, fallback_msg)
+        end
+    else
+        logmsg = JSONLogMessage{String}(args)
         JSON3.write(io, logmsg)
-    catch e
-        fallback_msg = JSONLogMessage{String}(args)
-        fallback_msg.kwargs["RecursiveJSONLogMessageError"] = sprint(Base.showerror, e)
-        JSON3.write(io, fallback_msg)
     end
     println(io)
     return nothing

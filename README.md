@@ -9,7 +9,7 @@ Currently, the following functors are available:
 - `LogFmt`: output log events formatted as [logfmt](https://brandur.org/logfmt)
 - `Truncated`: truncation of log messages
 
-## `JSON` and `RecursiveJSON`: Output log events as JSON
+## `JSON`: Output log events as JSON
 
 `LoggingFormats.JSON()` is a function which formats the log message and the log metadata as JSON.
 Example:
@@ -25,20 +25,19 @@ julia> with_logger(FormatLogger(LoggingFormats.JSON(), stderr)) do
 {"level":"error","msg":"something is wrong","module":"Main","file":"REPL[10]","line":3,"group":"REPL[10]","id":"Main_2289c7f9","kwargs":{}}
 ```
 
-One can also use `RecursiveJSON` to recursively serialize the `kwargs` as JSON:
+One can also pass `recursive=true` to recursively serialize the `kwargs` as JSON:
 
 ```julia
 julia> using LoggingFormats, LoggingExtras
 
-julia> with_logger(FormatLogger(LoggingFormats.RecursiveJSON(), stderr)) do
+julia> with_logger(FormatLogger(LoggingFormats.JSON(; recursive=true), stderr)) do
                   @info "hello, world" key=Dict("hello" => true)
        end
 {"level":"info","msg":"hello, world","module":"Main","file":"REPL[18]","line":2,"group":"REPL[18]","id":"Main_ffce16b5","kwargs":{"key":{"hello":true}}}
 ```
 
 If it encounters something which does not have a defined `StructTypes.StructType` to use
-for serializing to JSON, it will fallback to converting the objects to strings, like the
-`JSON` log format does.
+for serializing to JSON, it will fallback to converting the objects to strings, like the default `recursive=false` option does.
 
 ## `LogFmt`: Format log events as logfmt
 
