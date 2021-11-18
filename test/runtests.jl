@@ -1,7 +1,7 @@
 using Test: @test, @testset, @test_throws
 using Logging: Logging, with_logger
 using LoggingExtras: FormatLogger
-using LoggingFormats: LoggingFormats, Truncated, JSON, LogFmt
+using LoggingFormats: LoggingFormats, Truncated, JSON, LogFmt, RecursiveJSON
 import JSON3
 
 @testset "Truncating" begin
@@ -93,6 +93,39 @@ end
     @test json.line isa Int
     @test json.kwargs.x == "[1, 2, 3]"
     @test json.kwargs.y == "(1, 2)"
+
+    # RecursiveJSON
+    io = IOBuffer()
+    with_logger(FormatLogger(RecursiveJSON(), io)) do
+        y = (1, 2)
+        @info "info msg" x = [1, 2, 3] y = Dict("hi" => Dict("hi2" => [1,2]))
+    end
+    json = JSON3.read(seekstart(io))
+    @test json.level == "info"
+    @test json.msg == "info msg"
+    @test json.module == "Main"
+    @test json.line isa Int
+    @test json.kwargs.x == [1, 2, 3]
+    @test json.kwargs.y == Dict(:hi => Dict(:hi2 => [1,2]))
+
+    # Fallback to strings
+    struct A
+        f::Int
+    end
+     io = IOBuffer()
+     with_logger(FormatLogger(RecursiveJSON(), io)) do
+         y = (1, 2)
+         @info "info msg" x = [1, 2, 3] y = Dict("hi" => A(1))
+     end
+     json = JSON3.read(seekstart(io))
+    @test json.level == "info"
+    @test json.msg == "info msg"
+    @test json.module == "Main"
+    @test json.line isa Int
+    @test json.kwargs.x == "[1, 2, 3]"
+    @test json.kwargs.y == "Dict{String, A}(\"hi\" => A(1))"
+    @test json.kwargs.RecursiveJSONLogMessageError == "ArgumentError: A doesn't have a defined `StructTypes.StructType`"
+
 end
 
 @testset "logfmt" begin
