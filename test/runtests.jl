@@ -46,6 +46,10 @@ import JSON3
     @test occursin("│   short_var = a", str)
 end
 
+struct NoStructTypeDefined
+    f::Int
+end
+
 @testset "JSON" begin
     @test LoggingFormats.lvlstr(Logging.Error + 1) == "error"
     @test LoggingFormats.lvlstr(Logging.Error) == "error"
@@ -93,6 +97,38 @@ end
     @test json.line isa Int
     @test json.kwargs.x == "[1, 2, 3]"
     @test json.kwargs.y == "(1, 2)"
+
+    # `recursive=true`
+    io = IOBuffer()
+    with_logger(FormatLogger(JSON(; recursive=true), io)) do
+        y = (1, 2)
+        @info "info msg" x = [1, 2, 3] y = Dict("hi" => Dict("hi2" => [1,2]))
+    end
+    json = JSON3.read(seekstart(io))
+    @test json.level == "info"
+    @test json.msg == "info msg"
+    @test json.module == "Main"
+    @test json.line isa Int
+    @test json.kwargs.x == [1, 2, 3]
+    @test json.kwargs.y == Dict(:hi => Dict(:hi2 => [1,2]))
+
+    # Fallback to strings
+     io = IOBuffer()
+     with_logger(FormatLogger(JSON(; recursive=true), io)) do
+         y = (1, 2)
+         @info "info msg" x = [1, 2, 3] y = Dict("hi" => NoStructTypeDefined(1))
+     end
+     json = JSON3.read(seekstart(io))
+    @test json.level == "info"
+    @test json.msg == "info msg"
+    @test json.module == "Main"
+    @test json.line isa Int
+    @test json.kwargs.x == "[1, 2, 3]"
+    y = json.kwargs.y
+    must_have = ("Dict", "\"hi\"", "=>", "NoStructTypeDefined(1)")
+    @test all(h -> occursin(h, y), must_have) # avoid issues with printing changing with versions
+    @test json.kwargs[Symbol("LoggingFormats.FormatError")] == "ArgumentError: NoStructTypeDefined doesn't have a defined `StructTypes.StructType`"
+
 end
 
 @testset "logfmt" begin

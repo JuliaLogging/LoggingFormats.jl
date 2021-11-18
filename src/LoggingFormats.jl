@@ -56,7 +56,7 @@ lvlstr(lvl::Logging.LogLevel) = lvl >= Logging.Error ? "error" :
                                 lvl >= Logging.Info  ? "info"  :
                                                        "debug"
 
-struct JSONLogMessage
+struct JSONLogMessage{T}
     level::String
     msg::String
     _module::Union{String,Nothing}
@@ -64,10 +64,14 @@ struct JSONLogMessage
     line::Union{Int,Nothing}
     group::Union{String,Nothing}
     id::Union{String,Nothing}
-    kwargs::Dict{String,String}
+    kwargs::Dict{String,T}
 end
-function JSONLogMessage(args)
-    JSONLogMessage(
+
+transform(::Type{String}, v) = string(v)
+transform(::Type{Any}, v) = v
+
+function JSONLogMessage{T}(args) where {T}
+    JSONLogMessage{T}(
         lvlstr(args.level),
         args.message isa AbstractString ? args.message : string(args.message),
         args._module === nothing ? nothing : string(args._module),
@@ -75,18 +79,32 @@ function JSONLogMessage(args)
         args.line,
         args.group === nothing ? nothing : string(args.group),
         args.id === nothing ? nothing : string(args.id),
-        Dict{String,String}(string(k) => string(v) for (k, v) in args.kwargs)
+        Dict{String,T}(string(k) => transform(T, v) for (k, v) in args.kwargs)
     )
 end
-StructTypes.StructType(::Type{JSONLogMessage}) = StructTypes.OrderedStruct()
-StructTypes.names(::Type{JSONLogMessage}) = ((:_module, :module), )
+StructTypes.StructType(::Type{<:JSONLogMessage}) = StructTypes.OrderedStruct()
+StructTypes.names(::Type{<:JSONLogMessage}) = ((:_module, :module), )
 
 struct JSON <: Function
+    recursive::Bool
 end
 
-function (::JSON)(io, args)
-    logmsg = JSONLogMessage(args)
-    JSON3.write(io, logmsg)
+JSON(; recursive=false) = JSON(recursive)
+
+function (j::JSON)(io, args)
+    if j.recursive
+        logmsg = JSONLogMessage{Any}(args)
+        try
+            JSON3.write(io, logmsg)
+        catch e
+            fallback_msg = JSONLogMessage{String}(args)
+            fallback_msg.kwargs["LoggingFormats.FormatError"] = sprint(Base.showerror, e)
+            JSON3.write(io, fallback_msg)
+        end
+    else
+        logmsg = JSONLogMessage{String}(args)
+        JSON3.write(io, logmsg)
+    end
     println(io)
     return nothing
 end
