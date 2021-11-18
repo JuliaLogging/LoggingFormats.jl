@@ -127,7 +127,7 @@ end
     y = json.kwargs.y
     must_have = ("Dict", "\"hi\"", "=>", "NoStructTypeDefined(1)")
     @test all(h -> occursin(h, y), must_have) # avoid issues with printing changing with versions
-    @test json.kwargs.JSONRecursionError == "ArgumentError: NoStructTypeDefined doesn't have a defined `StructTypes.StructType`"
+    @test json.kwargs[Symbol("LoggingFormats.FormatError")] == "ArgumentError: NoStructTypeDefined doesn't have a defined `StructTypes.StructType`"
 
 end
 

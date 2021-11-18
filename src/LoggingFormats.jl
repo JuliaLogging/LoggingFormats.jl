@@ -98,7 +98,7 @@ function (j::JSON)(io, args)
             JSON3.write(io, logmsg)
         catch e
             fallback_msg = JSONLogMessage{String}(args)
-            fallback_msg.kwargs["JSONRecursionError"] = sprint(Base.showerror, e)
+            fallback_msg.kwargs["LoggingFormats.FormatError"] = sprint(Base.showerror, e)
             JSON3.write(io, fallback_msg)
         end
     else
