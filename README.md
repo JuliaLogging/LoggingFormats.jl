@@ -5,7 +5,7 @@ This package is an aggregation of various useful format functions to use with th
 [LoggingExtras](https://github.com/JuliaLogging/LoggingExtras.jl) package.
 
 Currently, the following functors are available:
-- `JSON`, `RecursiveJSON`: output log events as JSON
+- `JSON`: output log events as JSON
 - `LogFmt`: output log events formatted as [logfmt](https://brandur.org/logfmt)
 - `Truncated`: truncation of log messages
 
