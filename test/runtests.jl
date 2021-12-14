@@ -113,12 +113,12 @@ end
     @test json.kwargs.y == Dict(:hi => Dict(:hi2 => [1,2]))
 
     # Fallback to strings
-     io = IOBuffer()
-     with_logger(FormatLogger(JSON(; recursive=true), io)) do
-         y = (1, 2)
-         @info "info msg" x = [1, 2, 3] y = Dict("hi" => NoStructTypeDefined(1))
-     end
-     json = JSON3.read(seekstart(io))
+    io = IOBuffer()
+    with_logger(FormatLogger(JSON(; recursive=true), io)) do
+        y = (1, 2)
+        @info "info msg" x = [1, 2, 3] y = Dict("hi" => NoStructTypeDefined(1))
+    end
+    json = JSON3.read(seekstart(io))
     @test json.level == "info"
     @test json.msg == "info msg"
     @test json.module == "Main"
@@ -129,6 +129,54 @@ end
     @test all(h -> occursin(h, y), must_have) # avoid issues with printing changing with versions
     @test json.kwargs[Symbol("LoggingFormats.FormatError")] == "ArgumentError: NoStructTypeDefined doesn't have a defined `StructTypes.StructType`"
 
+    # Test logging exceptions
+    for recursive in (false, true)
+        io = IOBuffer()
+        with_logger(FormatLogger(JSON(; recursive=recursive), io)) do
+            try
+                throw(ArgumentError("no"))
+            catch e
+                @error "Oh no" exception = e
+            end
+        end
+        logs = JSON3.read(seekstart(io))
+        @test logs["msg"] == "Oh no"
+        @test logs["kwargs"]["exception"] == "ArgumentError: no"
+    end
+
+    # stacktrace, recursive JSON
+    io = IOBuffer()
+    with_logger(FormatLogger(JSON(; recursive=true), io)) do
+        try
+            throw(ArgumentError("no"))
+        catch e
+            @error "Oh no" exception = (e, catch_backtrace())
+        end
+    end
+    logs = JSON3.read(seekstart(io))
+    @test logs["msg"] == "Oh no"
+
+    @test logs["kwargs"]["exception"][1] == "ArgumentError(\"no\")"
+    # Make sure we get a stacktrace out:
+    @test occursin(r"ArgumentError: no\nStacktrace:\s* \[1\]",
+                   logs["kwargs"]["exception"][2])
+
+    # stacktrace, non-recursive JSON:
+    io = IOBuffer()
+    with_logger(FormatLogger(JSON(; recursive=false), io)) do
+        try
+            throw(ArgumentError("no"))
+        catch e
+            @error "Oh no" exception = (e, catch_backtrace())
+        end
+    end
+    logs = JSON3.read(seekstart(io))
+    @test logs["msg"] == "Oh no"
+
+    @test startswith(logs["kwargs"]["exception"],  "(\"ArgumentError(\\\"no\\\")")
+    # Make sure we get a stacktrace out:
+    @test occursin(r"ArgumentError: no\\nStacktrace:\\n\s* \[1\]",
+                   logs["kwargs"]["exception"])
 end
 
 @testset "logfmt" begin

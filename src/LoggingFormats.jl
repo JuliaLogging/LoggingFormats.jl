@@ -70,6 +70,17 @@ end
 transform(::Type{String}, v) = string(v)
 transform(::Type{Any}, v) = v
 
+# Use key information, then lower to 2-arg transform
+function transform(::Type{T}, key, v) where {T}
+    key == :exception || return transform(T, v)
+    if v isa Tuple && length(v) == 2
+        e, bt = v
+        msg = sprint(showerror, e, stacktrace(bt))
+        return transform(T, (string(e), msg))
+    end
+    return transform(T, sprint(showerror, v))
+end
+
 function JSONLogMessage{T}(args) where {T}
     JSONLogMessage{T}(
         lvlstr(args.level),
@@ -79,7 +90,7 @@ function JSONLogMessage{T}(args) where {T}
         args.line,
         args.group === nothing ? nothing : string(args.group),
         args.id === nothing ? nothing : string(args.id),
-        Dict{String,T}(string(k) => transform(T, v) for (k, v) in args.kwargs)
+        Dict{String,T}(string(k) => transform(T, k, v) for (k, v) in args.kwargs)
     )
 end
 StructTypes.StructType(::Type{<:JSONLogMessage}) = StructTypes.OrderedStruct()
@@ -98,7 +109,7 @@ function (j::JSON)(io, args)
             JSON3.write(io, logmsg)
         catch e
             fallback_msg = JSONLogMessage{String}(args)
-            fallback_msg.kwargs["LoggingFormats.FormatError"] = sprint(Base.showerror, e)
+            fallback_msg.kwargs["LoggingFormats.FormatError"] = sprint(showerror, e)
             JSON3.write(io, fallback_msg)
         end
     else
