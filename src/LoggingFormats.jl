@@ -75,7 +75,7 @@ function transform(::Type{T}, key, v) where {T}
     key == :exception || return transform(T, v)
     if v isa Tuple && length(v) == 2
         e, bt = v
-        msg = sprint(showerror, e, stacktrace(bt))
+        msg = sprint(Base.display_error, e, bt)
         return transform(T, (string(e), msg))
     end
     return transform(T, sprint(showerror, v))
