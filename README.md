@@ -47,7 +47,7 @@ julia> f() = try
             end
 
 julia> with_logger(f, FormatLogger(LoggingFormats.JSON(; recursive=true), stderr))
-{"level":"error","msg":"Input error","module":"Main","file":"REPL[2]","line":4,"group":"REPL[2]","id":"Main_a226875f","kwargs":{"exception":["ArgumentError(\"Bad input\")","ERROR: ArgumentError: Bad input\nStacktrace:\n [1] f()\n   @ Main ./REPL[2]:2\n [2] with_logstate(f::Function, logstate::Any)\n   @ Base.CoreLogging ./logging.jl:511\n [3] with_logger(f::Function, logger::FormatLogger)\n   @ Base.CoreLogging ./logging.jl:623\n [4] top-level scope\n   @ REPL[3]:1\n"]}}
+{"level":"error","msg":"Input error","module":"Main","file":"REPL[2]","line":4,"group":"REPL[2]","id":"Main_a226875f","kwargs":{"exception":"ERROR: ArgumentError: Bad input\nStacktrace:\n [1] f()\n   @ Main ./REPL[2]:2\n [2] with_logstate(f::Function, logstate::Any)\n   @ Base.CoreLogging ./logging.jl:511\n [3] with_logger(f::Function, logger::FormatLogger)\n   @ Base.CoreLogging ./logging.jl:623\n [4] top-level scope\n   @ REPL[3]:1\n"}}
 ```
 
 ## `LogFmt`: Format log events as logfmt
