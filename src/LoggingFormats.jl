@@ -73,10 +73,10 @@ transform(::Type{Any}, v) = v
 # Use key information, then lower to 2-arg transform
 function transform(::Type{T}, key, v) where {T}
     key == :exception || return transform(T, v)
-    if v isa Tuple && length(v) == 2
+    if v isa Tuple && length(v) == 2 && v[1] isa Exception
         e, bt = v
         msg = sprint(Base.display_error, e, bt)
-        return transform(T, (string(e), msg))
+        return transform(T, msg)
     end
     return transform(T, sprint(showerror, v))
 end
