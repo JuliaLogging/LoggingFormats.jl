@@ -131,6 +131,7 @@ end
 
     # Test logging exceptions
     for recursive in (false, true)
+        # no stacktrace
         io = IOBuffer()
         with_logger(FormatLogger(JSON(; recursive=recursive), io)) do
             try
@@ -142,41 +143,24 @@ end
         logs = JSON3.read(seekstart(io))
         @test logs["msg"] == "Oh no"
         @test logs["kwargs"]["exception"] == "ArgumentError: no"
-    end
 
-    # stacktrace, recursive JSON
-    io = IOBuffer()
-    with_logger(FormatLogger(JSON(; recursive=true), io)) do
-        try
-            throw(ArgumentError("no"))
-        catch e
-            @error "Oh no" exception = (e, catch_backtrace())
+        # stacktrace
+        io = IOBuffer()
+        with_logger(FormatLogger(JSON(; recursive=recursive), io)) do
+            try
+                throw(ArgumentError("no"))
+            catch e
+                @error "Oh no" exception = (e, catch_backtrace())
+            end
         end
+        logs = JSON3.read(seekstart(io))
+        @test logs["msg"] == "Oh no"
+
+        @test occursin("ArgumentError: no", logs["kwargs"]["exception"])
+        # Make sure we get a stacktrace out:
+        @test occursin(r"ArgumentError: no\nStacktrace:\s* \[1\]",
+                    logs["kwargs"]["exception"])
     end
-    logs = JSON3.read(seekstart(io))
-    @test logs["msg"] == "Oh no"
-
-    @test logs["kwargs"]["exception"][1] == "ArgumentError(\"no\")"
-    # Make sure we get a stacktrace out:
-    @test occursin(r"ArgumentError: no\nStacktrace:\s* \[1\]",
-                   logs["kwargs"]["exception"][2])
-
-    # stacktrace, non-recursive JSON:
-    io = IOBuffer()
-    with_logger(FormatLogger(JSON(; recursive=false), io)) do
-        try
-            throw(ArgumentError("no"))
-        catch e
-            @error "Oh no" exception = (e, catch_backtrace())
-        end
-    end
-    logs = JSON3.read(seekstart(io))
-    @test logs["msg"] == "Oh no"
-
-    @test startswith(logs["kwargs"]["exception"],  "(\"ArgumentError(\\\"no\\\")")
-    # Make sure we get a stacktrace out:
-    @test occursin(r"ArgumentError: no\\nStacktrace:\\n\s* \[1\]",
-                   logs["kwargs"]["exception"])
 end
 
 @testset "logfmt" begin
