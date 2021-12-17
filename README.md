@@ -37,7 +37,18 @@ julia> with_logger(FormatLogger(LoggingFormats.JSON(; recursive=true), stderr)) 
 ```
 
 If it encounters something which does not have a defined `StructTypes.StructType` to use
-for serializing to JSON, it will fallback to converting the objects to strings, like the default `recursive=false` option does.
+for serializing to JSON, it will fallback to converting the objects to strings, like the default `recursive=false` option does. Handles the key `exception` specially, by printing errors and stacktraces using `Base.showerror`.
+
+```julia
+julia> f() = try
+                throw(ArgumentError("Bad input"))
+            catch e
+                @error "Input error" exception=(e, catch_backtrace())
+            end
+
+julia> with_logger(f, FormatLogger(LoggingFormats.JSON(; recursive=true), stderr))
+{"level":"error","msg":"Input error","module":"Main","file":"REPL[2]","line":4,"group":"REPL[2]","id":"Main_a226875f","kwargs":{"exception":"ERROR: ArgumentError: Bad input\nStacktrace:\n [1] f()\n   @ Main ./REPL[2]:2\n [2] with_logstate(f::Function, logstate::Any)\n   @ Base.CoreLogging ./logging.jl:511\n [3] with_logger(f::Function, logger::FormatLogger)\n   @ Base.CoreLogging ./logging.jl:623\n [4] top-level scope\n   @ REPL[3]:1\n"}}
+```
 
 ## `LogFmt`: Format log events as logfmt
 
