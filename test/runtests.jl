@@ -46,10 +46,6 @@ import JSON3
     @test occursin("│   short_var = a", str)
 end
 
-struct NoStructTypeDefined
-    f::Int
-end
-
 @testset "JSON" begin
     @test LoggingFormats.lvlstr(Logging.Error + 1) == "error"
     @test LoggingFormats.lvlstr(Logging.Error) == "error"
@@ -116,7 +112,7 @@ end
     io = IOBuffer()
     with_logger(FormatLogger(JSON(; recursive=true), io)) do
         y = (1, 2)
-        @info "info msg" x = [1, 2, 3] y = Dict("hi" => NoStructTypeDefined(1))
+        @info "info msg" x = [1, 2, 3] y = Dict("hi" => NaN)
     end
     json = JSON3.read(seekstart(io))
     @test json.level == "info"
@@ -125,9 +121,9 @@ end
     @test json.line isa Int
     @test json.kwargs.x == "[1, 2, 3]"
     y = json.kwargs.y
-    must_have = ("Dict", "\"hi\"", "=>", "NoStructTypeDefined(1)")
+    must_have = ("Dict", "\"hi\"", "=>", "NaN")
     @test all(h -> occursin(h, y), must_have) # avoid issues with printing changing with versions
-    @test json.kwargs[Symbol("LoggingFormats.FormatError")] == "ArgumentError: NoStructTypeDefined doesn't have a defined `StructTypes.StructType`"
+    @test json.kwargs[Symbol("LoggingFormats.FormatError")] == "NaN not allowed to be written in JSON spec"
 
     # Test logging exceptions
     for recursive in (false, true)
