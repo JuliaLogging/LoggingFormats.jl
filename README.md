@@ -66,11 +66,13 @@ level=info msg="hello, world" module=Main file="REPL[2]" line=2 group="REPL[2]" 
 level=error msg="something is wrong" module=Main file="REPL[2]" line=3 group="REPL[2]" id=Main_2289c7f8
 ```
 
+Similarly to the JSON logger, `LogFmt` handles the key `exception` specially, by printing errors and stacktraces using `Base.showerror`.
+
 ## `Truncated`: Truncate long variables and messages
 
 `LoggingFormats.Truncated(max_var_len=5_000)` is a function which formats data in similar manner as `ConsoleLogger`,
 but with truncation of string representation when it exceeds `max_var_len`.
-This format truncates the length of message itself, and truncates string representation of 
+This format truncates the length of message itself, and truncates string representation of
 individual variables, but does not truncate the size of whole printed text.
 
 See the examples:

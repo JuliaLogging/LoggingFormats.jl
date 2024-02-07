@@ -70,15 +70,23 @@ end
 transform(::Type{String}, v) = string(v)
 transform(::Type{Any}, v) = v
 
-# Use key information, then lower to 2-arg transform
-function transform(::Type{T}, key, v) where {T}
-    key == :exception || return transform(T, v)
+maybe_stringify_exceptions(key, v) = maybe_stringify_exceptions(identity, key, v)
+
+# applies `f` to the message if it's an error
+function maybe_stringify_exceptions(f, key, v)
+    key == :exception || return v
     if v isa Tuple && length(v) == 2 && v[1] isa Exception
         e, bt = v
         msg = sprint(Base.display_error, e, bt)
-        return transform(T, msg)
+        return f(msg)
     end
-    return transform(T, sprint(showerror, v))
+    return f(sprint(showerror, v))
+end
+
+# Use key information, then lower to 2-arg transform
+function transform(::Type{T}, key, v) where {T}
+    v = maybe_stringify_exceptions(key, v)
+    return transform(T, v)
 end
 
 function JSONLogMessage{T}(args) where {T}
@@ -125,6 +133,11 @@ end
 ############
 # See  https://brandur.org/logfmt
 
+# We will just replace newlines by spaces to remain at 1-line per log message
+function logfmt_process_stacktraces(str)
+    return replace(str, '\n' => ' ')
+end
+
 struct LogFmt <: Function
 end
 function (::LogFmt)(io, args)
@@ -147,6 +160,7 @@ function (::LogFmt)(io, args)
     )
     for (k, v) in args.kwargs
         print(io, " ", k, "=\"")
+        v = maybe_stringify_exceptions(logfmt_process_stacktraces, k, v)
         escape_string(io, sprint(print, something(v, "nothing")), '"')
         print(io, "\"")
     end
