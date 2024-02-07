@@ -4,6 +4,10 @@ using LoggingExtras: FormatLogger
 using LoggingFormats: LoggingFormats, Truncated, JSON, LogFmt
 import JSON3
 
+function my_throwing_function()
+    throw(ArgumentError("no"))
+end
+
 @testset "Truncating" begin
     @test LoggingFormats.shorten_str("αβγαβγ", 3) == "αβ…"
     @test LoggingFormats.shorten_str("αβγαβγ", 4) == "αβγ…"
@@ -167,6 +171,7 @@ end
         @warn "msg with \"quotes\""
         @error "error msg with nothings" _module=nothing _file=nothing __line=nothing
         @error :notstring x = [1, 2, 3] y = "hello\" \"world"
+        @error "hi" exception=ErrorException("bad")
     end
     strs = collect(eachline(seekstart(io)))
     @test occursin("level=debug msg=\"debug msg\" module=Main", strs[1])
@@ -183,4 +188,37 @@ end
     @test occursin("line=\"nothing\"", strs[4])
     @test occursin("level=error msg=\"notstring\" module=Main", strs[5])
     @test occursin("x=\"[1, 2, 3]\" y=\"hello\\\" \\\"world\"", strs[5])
+    @test occursin("exception=\"bad\"", strs[6])
+
+    # Now let's try exceptions with backtraces
+    io = IOBuffer()
+    with_logger(FormatLogger(LogFmt(), io)) do
+        try
+            my_throwing_function()
+        catch e
+            @error "Oh no" exception = (e, catch_backtrace())
+        end
+    end
+    str = String(take!(io))
+    @test occursin("level=error msg=\"Oh no\" module=Main", str)
+    @test occursin("file=\"", str)
+    @test occursin("group=\"", str)
+    @test occursin("exception=\"ERROR: ArgumentError: no Stacktrace:", str)
+    # no new lines (except at the end of the line)
+    @test !occursin('\n', chomp(str))
+    # no Ptr's showing up in the backtrace
+    @test !occursin("Ptr", str)
+    # Test we are getting at least some stacktrace, e.g., the function we called:
+    @test occursin("my_throwing_function()", str)
+
+    # Can test by converting to JSON with the node `logfmt` package:
+    # first install it with `npm i -g logfmt`
+    # Then:
+    # in = Base.PipeEndpoint()
+    # out = Base.PipeEndpoint()
+    # p = run(pipeline(`logfmt`; stdin=in, stdout=out); wait=false)
+    # write(in, str)
+    # close(in)
+    # wait(p)
+    # output = JSON3.read(read(out))
 end
