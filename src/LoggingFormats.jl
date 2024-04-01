@@ -70,15 +70,20 @@ end
 transform(::Type{String}, v) = string(v)
 transform(::Type{Any}, v) = v
 
-# Use key information, then lower to 2-arg transform
-function transform(::Type{T}, key, v) where {T}
-    key == :exception || return transform(T, v)
+function maybe_stringify_exceptions(key, v)
+    key == :exception || return v
     if v isa Tuple && length(v) == 2 && v[1] isa Exception
         e, bt = v
         msg = sprint(Base.display_error, e, bt)
-        return transform(T, msg)
+        return msg
     end
-    return transform(T, sprint(showerror, v))
+    return sprint(showerror, v)
+end
+
+# Use key information, then lower to 2-arg transform
+function transform(::Type{T}, key, v) where {T}
+    v = maybe_stringify_exceptions(key, v)
+    return transform(T, v)
 end
 
 function JSONLogMessage{T}(args) where {T}
@@ -147,6 +152,7 @@ function (::LogFmt)(io, args)
     )
     for (k, v) in args.kwargs
         print(io, " ", k, "=\"")
+        v = maybe_stringify_exceptions(k, v)
         escape_string(io, sprint(print, something(v, "nothing")), '"')
         print(io, "\"")
     end
