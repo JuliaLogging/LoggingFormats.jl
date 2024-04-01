@@ -130,26 +130,62 @@ end
 ############
 # See  https://brandur.org/logfmt
 
+const STANDARD_KEYS = (:level, :msg, :module, :file, :line, :group, :id)
+
+"""
+    LogFmt(standard_keys=$STANDARD_KEYS)
+    LogFmt(standard_keys...)
+
+Creates a `logfmt` format logger. The log message includes each of the `standard_keys`, as well as any "custom" keys. For example,
+
+```julia
+julia> using LoggingFormats, LoggingExtras
+
+julia> with_logger(FormatLogger(LoggingFormats.LogFmt((:level, :message, :file)), stderr)) do
+           @info "hello, world" extra="bye"
+           @error "something is wrong"
+       end
+level=info msg="hello, world" file="REPL[5]" extra="bye"
+level=error msg="something is wrong" file="REPL[5]"
+```
+
+Note that the order of arguments to `LogFmt` is respected in the log printing.
+"""
 struct LogFmt <: Function
+    standard_keys::NTuple{<:Any,Symbol}
+    function LogFmt(keys::NTuple{N,Symbol}) where {N}
+        extra = setdiff(keys, STANDARD_KEYS)
+
+        if !isempty(extra)
+            if length(extra) == 1
+                extra = first(extra)
+                plural = ""
+            else
+                extra = Tuple(extra)
+                plural = "s"
+            end
+            throw(ArgumentError("Unsupported standard logging key$plural `$(repr(extra))` found. The only supported keys are: `$STANDARD_KEYS`."))
+        end
+        return new(keys)
+    end
 end
-function (::LogFmt)(io, args)
-    print(io, "level=", lvlstr(args.level),
-              " msg=\"",
-    )
-    escape_string(io, args.message isa AbstractString ? args.message : string(args.message), '"')
-    print(io, "\"",
-              " module=", something(args._module, "nothing"),
-              " file=\"",
-    )
-    escape_string(io, args.file isa AbstractString ? args.file : string(something(args.file, "nothing")), '"')
-    print(io, "\"",
-              " line=", something(args.line, "nothing"),
-              " group=\"",
-    )
-    escape_string(io, args.group isa AbstractString ? args.group : string(something(args.group, "nothing")), '"')
-    print(io, "\"",
-              " id=", something(args.id, "nothing"),
-    )
+LogFmt() = LogFmt(STANDARD_KEYS)
+LogFmt(keys::Symbol...) = LogFmt(keys)
+
+function fmtval(k, v)
+    k == :level && return lvlstr(v)
+    return v isa AbstractString ? v : string(something(v, "nothing"))
+end
+
+function (l::LogFmt)(io, args)
+    for (i, k) in enumerate(l.standard_keys)
+        i == 1 || print(io, ' ')
+        print(io, k, '=')
+        k in (:level, :module) || print(io, '"')
+        k_lookup = k === :module ? :_module : k === :msg ? :message : k
+        escape_string(io, fmtval(k, getproperty(args, k_lookup)), '"')
+        k in (:level, :module) || print(io, '"')
+    end
     for (k, v) in args.kwargs
         print(io, " ", k, "=\"")
         v = maybe_stringify_exceptions(k, v)
