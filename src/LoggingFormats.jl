@@ -70,7 +70,6 @@ end
 transform(::Type{String}, v) = string(v)
 transform(::Type{Any}, v) = v
 
-# applies `f` to the message if it's an error
 function maybe_stringify_exceptions(key, v)
     key == :exception || return v
     if v isa Tuple && length(v) == 2 && v[1] isa Exception
