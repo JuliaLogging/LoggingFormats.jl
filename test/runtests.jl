@@ -203,7 +203,7 @@ end
     @test occursin("level=error msg=\"Oh no\" module=Main", str)
     @test occursin("file=\"", str)
     @test occursin("group=\"", str)
-    @test occursin("exception=\"ERROR: ArgumentError: no Stacktrace:", str)
+    @test occursin("exception=\"ERROR: ArgumentError: no\\nStacktrace:", str)
     # no new lines (except at the end of the line)
     @test !occursin('\n', chomp(str))
     # no Ptr's showing up in the backtrace
