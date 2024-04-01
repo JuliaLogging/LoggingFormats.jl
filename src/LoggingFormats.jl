@@ -70,21 +70,9 @@ end
 transform(::Type{String}, v) = string(v)
 transform(::Type{Any}, v) = v
 
-function maybe_stringify_exceptions(key, v)
-    key == :exception || return v
-    if v isa Tuple && length(v) == 2 && v[1] isa Exception
-        e, bt = v
-        msg = sprint(Base.display_error, e, bt)
-        return msg
-    end
-    return sprint(showerror, v)
-end
-
-# Use key information, then lower to 2-arg transform
-function transform(::Type{T}, key, v) where {T}
-    v = maybe_stringify_exceptions(key, v)
-    return transform(T, v)
-end
+maybe_stringify_exceptions((e, bt)::Tuple{Exception,Any}) = sprint(Base.display_error, e, bt)
+maybe_stringify_exceptions(e::Exception) = sprint(showerror, e)
+maybe_stringify_exceptions(v) = v
 
 function JSONLogMessage{T}(args) where {T}
     JSONLogMessage{T}(
@@ -95,7 +83,7 @@ function JSONLogMessage{T}(args) where {T}
         args.line,
         args.group === nothing ? nothing : string(args.group),
         args.id === nothing ? nothing : string(args.id),
-        Dict{String,T}(string(k) => transform(T, k, v) for (k, v) in args.kwargs)
+        Dict{String,T}(string(k) => transform(T, maybe_stringify_exceptions(v)) for (k, v) in args.kwargs)
     )
 end
 StructTypes.StructType(::Type{<:JSONLogMessage}) = StructTypes.OrderedStruct()
@@ -152,7 +140,7 @@ function (::LogFmt)(io, args)
     )
     for (k, v) in args.kwargs
         print(io, " ", k, "=\"")
-        v = maybe_stringify_exceptions(k, v)
+        v = maybe_stringify_exceptions(v)
         escape_string(io, sprint(print, something(v, "nothing")), '"')
         print(io, "\"")
     end

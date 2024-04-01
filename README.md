@@ -37,7 +37,7 @@ julia> with_logger(FormatLogger(LoggingFormats.JSON(; recursive=true), stderr)) 
 ```
 
 If it encounters something which does not have a defined `StructTypes.StructType` to use
-for serializing to JSON, it will fallback to converting the objects to strings, like the default `recursive=false` option does. Handles the key `exception` specially, by printing errors and stacktraces using `Base.showerror`.
+for serializing to JSON (or otherwise errors when serializing to JSON), it will fallback to converting the objects to strings, like the default `recursive=false` option does. Handles exceptions specially, by printing errors and stacktraces using `Base.showerror`.
 
 ```julia
 julia> f() = try
@@ -66,7 +66,7 @@ level=info msg="hello, world" module=Main file="REPL[2]" line=2 group="REPL[2]" 
 level=error msg="something is wrong" module=Main file="REPL[2]" line=3 group="REPL[2]" id=Main_2289c7f8
 ```
 
-Similarly to the JSON logger, `LogFmt` handles the key `exception` specially, by printing errors and stacktraces using `Base.showerror`.
+Similarly to the JSON logger, `LogFmt` handles exceptions specially, by printing errors and stacktraces using `Base.showerror`.
 
 ## `Truncated`: Truncate long variables and messages
 
