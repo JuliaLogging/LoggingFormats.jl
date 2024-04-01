@@ -134,15 +134,20 @@ end
         # no stacktrace
         io = IOBuffer()
         with_logger(FormatLogger(JSON(; recursive=recursive), io)) do
-            try
-                throw(ArgumentError("no"))
-            catch e
-                @error "Oh no" exception = e
-            end
+            @error "Oh no" exception = ArgumentError("no")
         end
         logs = JSON3.read(seekstart(io))
         @test logs["msg"] == "Oh no"
         @test logs["kwargs"]["exception"] == "ArgumentError: no"
+
+        # non-standard exception key
+        io = IOBuffer()
+        with_logger(FormatLogger(JSON(; recursive=recursive), io)) do
+            @error "Oh no" ex = ArgumentError("no")
+        end
+        logs = JSON3.read(seekstart(io))
+        @test logs["msg"] == "Oh no"
+        @test logs["kwargs"]["ex"] == "ArgumentError: no"
 
         # stacktrace
         io = IOBuffer()
