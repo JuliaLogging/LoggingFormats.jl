@@ -85,7 +85,6 @@ function to_namedtuple(::Type{T}, args; nest_kwargs) where {T}
         args.id === nothing ? nothing : string(args.id),
     )
     return merge(standard_message, kw)
-    )
 end
 
 """
