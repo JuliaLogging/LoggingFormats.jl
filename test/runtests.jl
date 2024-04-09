@@ -118,7 +118,6 @@ end
     # With clash
     io = IOBuffer()
     with_logger(FormatLogger(JSON(; nest_kwargs=false), io)) do
-        y = (1, 2)
         @info "info msg" line = [1, 2, 3]
     end
     json = JSON3.read(seekstart(io))
@@ -132,7 +131,6 @@ end
     # `recursive=true`
     io = IOBuffer()
     with_logger(FormatLogger(JSON(; recursive=true), io)) do
-        y = (1, 2)
         @info "info msg" x = [1, 2, 3] y = Dict("hi" => Dict("hi2" => [1,2]))
     end
     json = JSON3.read(seekstart(io))
@@ -147,7 +145,6 @@ end
     for nest_kwargs in (true, false)
         io = IOBuffer()
         with_logger(FormatLogger(JSON(; recursive=true, nest_kwargs=nest_kwargs), io)) do
-            y = (1, 2)
             @info "info msg" x = [1, 2, 3] y = Dict("hi" => NaN)
         end
         json = JSON3.read(seekstart(io))
