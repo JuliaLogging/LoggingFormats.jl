@@ -75,7 +75,7 @@ function to_namedtuple(::Type{T}, args; nest_kwargs) where {T}
     else
         kw = (unclash_key(k) => transform(T, maybe_stringify_exceptions(v)) for (k, v) in args.kwargs)
     end
-    standard_message = NamedTuple{STANDARD_KEYS}(
+    standard_message = NamedTuple{STANDARD_KEYS}((
         lvlstr(args.level),
         args.message isa AbstractString ? args.message : string(args.message),
         args._module === nothing ? nothing : string(args._module),
@@ -83,7 +83,7 @@ function to_namedtuple(::Type{T}, args; nest_kwargs) where {T}
         args.line,
         args.group === nothing ? nothing : string(args.group),
         args.id === nothing ? nothing : string(args.id),
-    )
+    ))
     return merge(standard_message, kw)
 end
 
