@@ -1,6 +1,8 @@
 module LoggingFormats
 
-import Logging, JSON3, StructTypes
+import Logging, JSON3
+
+const STANDARD_KEYS = (:level, :msg, :module, :file, :line, :group, :id)
 
 ###############
 ## Truncated ##
@@ -56,16 +58,6 @@ lvlstr(lvl::Logging.LogLevel) = lvl >= Logging.Error ? "error" :
                                 lvl >= Logging.Info  ? "info"  :
                                                        "debug"
 
-struct JSONLogMessage{T}
-    level::String
-    msg::String
-    _module::Union{String,Nothing}
-    file::Union{String,Nothing}
-    line::Union{Int,Nothing}
-    group::Union{String,Nothing}
-    id::Union{String,Nothing}
-    kwargs::Dict{String,T}
-end
 
 transform(::Type{String}, v) = string(v)
 transform(::Type{Any}, v) = v
@@ -74,8 +66,16 @@ maybe_stringify_exceptions((e, bt)::Tuple{Exception,Any}) = sprint(Base.display_
 maybe_stringify_exceptions(e::Exception) = sprint(showerror, e)
 maybe_stringify_exceptions(v) = v
 
-function JSONLogMessage{T}(args) where {T}
-    JSONLogMessage{T}(
+unclash_key(k) = k in STANDARD_KEYS ? Symbol("_", k) : k
+
+function to_namedtuple(::Type{T}, args; nest_kwargs) where {T}
+    kw = (k => transform(T, maybe_stringify_exceptions(v)) for (k, v) in args.kwargs)
+    if nest_kwargs
+        kw = (:kwargs => Dict{String, T}(string(k) => transform(T, maybe_stringify_exceptions(v)) for (k, v) in args.kwargs),)
+    else
+        kw = (unclash_key(k) => transform(T, maybe_stringify_exceptions(v)) for (k, v) in args.kwargs)
+    end
+    standard_message = NamedTuple{STANDARD_KEYS}((
         lvlstr(args.level),
         args.message isa AbstractString ? args.message : string(args.message),
         args._module === nothing ? nothing : string(args._module),
@@ -83,30 +83,59 @@ function JSONLogMessage{T}(args) where {T}
         args.line,
         args.group === nothing ? nothing : string(args.group),
         args.id === nothing ? nothing : string(args.id),
-        Dict{String,T}(string(k) => transform(T, maybe_stringify_exceptions(v)) for (k, v) in args.kwargs)
-    )
+    ))
+    return merge(standard_message, kw)
 end
-StructTypes.StructType(::Type{<:JSONLogMessage}) = StructTypes.OrderedStruct()
-StructTypes.names(::Type{<:JSONLogMessage}) = ((:_module, :module), )
 
+"""
+    JSON(; recursive=false, nest_kwargs=true)
+
+Creates a `JSON` format logger. If `recursive=true`, any custom arguments will be recursively serialized as JSON; otherwise, the values will be treated as strings. If `nest_kwargs` is true (the default),  all custom keyword arguments will be under the `kwargs` key. Otherwise, they will be inlined into the top-level JSON object. In the latter case, if the key name clashes with one of the standard keys (`$STANDARD_KEYS`), it will be renamed by prefixing it with a `_`.
+
+## Examples
+
+```julia
+julia> using LoggingFormats, LoggingExtras
+
+julia> with_logger(FormatLogger(LoggingFormats.JSON(; recursive=false), stderr)) do
+    @info "hello, world" key=Dict("hello" => true)
+end
+{"level":"info","msg":"hello, world","module":"Main","file":"REPL[3]","line":2,"group":"REPL[3]","id":"Main_ffce16b4","kwargs":{"key":"Dict{String, Bool}(\"hello\" => 1)"}}
+
+julia> with_logger(FormatLogger(LoggingFormats.JSON(; recursive=true), stderr)) do
+           @info "hello, world" key=Dict("hello" => true)
+end
+{"level":"info","msg":"hello, world","module":"Main","file":"REPL[4]","line":2,"group":"REPL[4]","id":"Main_ffce16b5","kwargs":{"key":{"hello":true}}}
+
+julia> with_logger(FormatLogger(LoggingFormats.JSON(; recursive=true, nest_kwargs=false), stderr)) do
+    @info "hello, world" key=Dict("hello" => true)
+end
+{"level":"info","msg":"hello, world","module":"Main","file":"REPL[5]","line":2,"group":"REPL[5]","id":"Main_ffce16b6","key":{"hello":true}}
+```
+"""
 struct JSON <: Function
     recursive::Bool
+    nest_kwargs::Bool
 end
 
-JSON(; recursive=false) = JSON(recursive)
+JSON(; recursive=false, nest_kwargs=true) = JSON(recursive, nest_kwargs)
 
 function (j::JSON)(io, args)
     if j.recursive
-        logmsg = JSONLogMessage{Any}(args)
+        logmsg = to_namedtuple(Any, args; nest_kwargs=j.nest_kwargs)
         try
             JSON3.write(io, logmsg)
         catch e
-            fallback_msg = JSONLogMessage{String}(args)
-            fallback_msg.kwargs["LoggingFormats.FormatError"] = sprint(showerror, e)
+            if j.nest_kwargs
+                fallback_msg = to_namedtuple(String, args; nest_kwargs=true)
+                fallback_msg.kwargs["LoggingFormats.FormatError"] = sprint(showerror, e)
+            else
+                fallback_msg = (; to_namedtuple(String, args; nest_kwargs=false)..., Symbol("LoggingFormats.FormatError") => sprint(showerror, e))
+            end
             JSON3.write(io, fallback_msg)
         end
     else
-        logmsg = JSONLogMessage{String}(args)
+        logmsg = to_namedtuple(String, args; nest_kwargs=j.nest_kwargs)
         JSON3.write(io, logmsg)
     end
     println(io)
