@@ -147,8 +147,6 @@ end
 ############
 # See  https://brandur.org/logfmt
 
-const STANDARD_KEYS = (:level, :msg, :module, :file, :line, :group, :id)
-
 """
     LogFmt(standard_keys=$STANDARD_KEYS)
     LogFmt(standard_keys...)
