@@ -98,10 +98,39 @@ end
     @test json.kwargs.x == "[1, 2, 3]"
     @test json.kwargs.y == "(1, 2)"
 
+
+    # nest_kwargs=false
+    io = IOBuffer()
+    with_logger(FormatLogger(JSON(; nest_kwargs=false), io)) do
+        y = (1, 2)
+        @info "info msg" x = [1, 2, 3] y
+    end
+    json = JSON3.read(seekstart(io))
+    @test json.level == "info"
+    @test json.msg == "info msg"
+    @test json.module == "Main"
+    @test json.line isa Int
+    # not tucked under `kwargs`
+    @test json.x == "[1, 2, 3]"
+    @test json.y == "(1, 2)"
+
+
+    # With clash
+    io = IOBuffer()
+    with_logger(FormatLogger(JSON(; nest_kwargs=false), io)) do
+        @info "info msg" line = [1, 2, 3]
+    end
+    json = JSON3.read(seekstart(io))
+    @test json.level == "info"
+    @test json.msg == "info msg"
+    @test json.module == "Main"
+    @test json.line isa Int
+    # key was renamed to prevent clash:
+    @test json._line == "[1, 2, 3]"
+
     # `recursive=true`
     io = IOBuffer()
     with_logger(FormatLogger(JSON(; recursive=true), io)) do
-        y = (1, 2)
         @info "info msg" x = [1, 2, 3] y = Dict("hi" => Dict("hi2" => [1,2]))
     end
     json = JSON3.read(seekstart(io))
@@ -113,40 +142,54 @@ end
     @test json.kwargs.y == Dict(:hi => Dict(:hi2 => [1,2]))
 
     # Fallback to strings
-    io = IOBuffer()
-    with_logger(FormatLogger(JSON(; recursive=true), io)) do
-        y = (1, 2)
-        @info "info msg" x = [1, 2, 3] y = Dict("hi" => NaN)
+    for nest_kwargs in (true, false)
+        io = IOBuffer()
+        with_logger(FormatLogger(JSON(; recursive=true, nest_kwargs=nest_kwargs), io)) do
+            @info "info msg" x = [1, 2, 3] y = Dict("hi" => NaN)
+        end
+        json = JSON3.read(seekstart(io))
+        @test json.level == "info"
+        @test json.msg == "info msg"
+        @test json.module == "Main"
+        @test json.line isa Int
+        if nest_kwargs
+            @test json.kwargs.x == "[1, 2, 3]"
+            @test json.kwargs[Symbol("LoggingFormats.FormatError")] == "NaN not allowed to be written in JSON spec"
+            y = json.kwargs.y
+        else
+            @test json.x == "[1, 2, 3]"
+            @test json[Symbol("LoggingFormats.FormatError")] == "NaN not allowed to be written in JSON spec"
+            y = json.y
+        end
+        must_have = ("Dict", "\"hi\"", "=>", "NaN")
+        @test all(h -> occursin(h, y), must_have) # avoid issues with printing changing with versions
     end
-    json = JSON3.read(seekstart(io))
-    @test json.level == "info"
-    @test json.msg == "info msg"
-    @test json.module == "Main"
-    @test json.line isa Int
-    @test json.kwargs.x == "[1, 2, 3]"
-    y = json.kwargs.y
-    must_have = ("Dict", "\"hi\"", "=>", "NaN")
-    @test all(h -> occursin(h, y), must_have) # avoid issues with printing changing with versions
-    @test json.kwargs[Symbol("LoggingFormats.FormatError")] == "NaN not allowed to be written in JSON spec"
 
     # Test logging exceptions
-    for recursive in (false, true)
+    for recursive in (false, true), nest_kwargs in (true, false)
         # no stacktrace
         io = IOBuffer()
-        with_logger(FormatLogger(JSON(; recursive=recursive), io)) do
-            try
-                throw(ArgumentError("no"))
-            catch e
-                @error "Oh no" exception = e
-            end
+        with_logger(FormatLogger(JSON(; recursive=recursive, nest_kwargs=nest_kwargs), io)) do
+            @error "Oh no" exception = ArgumentError("no")
         end
         logs = JSON3.read(seekstart(io))
         @test logs["msg"] == "Oh no"
-        @test logs["kwargs"]["exception"] == "ArgumentError: no"
+        ex = nest_kwargs ? logs["kwargs"]["exception"] : logs["exception"]
+        @test ex == "ArgumentError: no"
+
+        # non-standard exception key
+        io = IOBuffer()
+        with_logger(FormatLogger(JSON(; recursive=recursive, nest_kwargs=nest_kwargs), io)) do
+            @error "Oh no" ex = ArgumentError("no")
+        end
+        logs = JSON3.read(seekstart(io))
+        @test logs["msg"] == "Oh no"
+        ex = nest_kwargs ? logs["kwargs"]["ex"] : logs["ex"]
+        @test ex == "ArgumentError: no"
 
         # stacktrace
         io = IOBuffer()
-        with_logger(FormatLogger(JSON(; recursive=recursive), io)) do
+        with_logger(FormatLogger(JSON(; recursive=recursive, nest_kwargs=nest_kwargs), io)) do
             try
                 throw(ArgumentError("no"))
             catch e
@@ -156,10 +199,10 @@ end
         logs = JSON3.read(seekstart(io))
         @test logs["msg"] == "Oh no"
 
-        @test occursin("ArgumentError: no", logs["kwargs"]["exception"])
+        ex = nest_kwargs ? logs["kwargs"]["exception"] : logs["exception"]
+        @test occursin("ArgumentError: no", ex)
         # Make sure we get a stacktrace out:
-        @test occursin(r"ArgumentError: no\nStacktrace:\s* \[1\]",
-                    logs["kwargs"]["exception"])
+        @test occursin(r"ArgumentError: no\nStacktrace:\s* \[1\]", ex)
     end
 end
 
