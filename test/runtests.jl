@@ -207,6 +207,22 @@ end
 end
 
 @testset "logfmt" begin
+    # Unsupported keys:
+    @test_throws ArgumentError("Unsupported standard logging key `:hi` found. The only supported keys are: `(:level, :msg, :module, :file, :line, :group, :id)`.") LogFmt((:hi,))
+    @test_throws ArgumentError("Unsupported standard logging keys `(:hi, :bye)` found. The only supported keys are: `(:level, :msg, :module, :file, :line, :group, :id)`.") LogFmt((:hi, :bye))
+    @test_throws MethodError LogFmt("no")
+
+    # Fewer keys, out of order
+    io = IOBuffer()
+    with_logger(FormatLogger(LogFmt(:msg, :level, :file), io)) do
+        @debug "debug msg" extra="hi"
+        @info "info msg" _file="file with space.jl"
+    end
+    strs = collect(eachline(seekstart(io)))
+    @test match(r"msg=\"debug msg\" level=debug file=\"(.*)\" extra=\"hi\"", strs[1]) !== nothing
+    @test strs[2] == "msg=\"info msg\" level=info file=\"file with space.jl\""
+
+    # Standard:
     io = IOBuffer()
     with_logger(FormatLogger(LogFmt(), io)) do
         @debug "debug msg"

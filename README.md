@@ -68,6 +68,21 @@ level=error msg="something is wrong" module=Main file="REPL[2]" line=3 group="RE
 
 Similarly to the JSON logger, `LogFmt` handles exceptions specially, by printing errors and stacktraces using `Base.showerror`.
 
+One can also restrict the "standard" keys used in the log message, for example:
+
+```julia
+julia> using LoggingFormats, LoggingExtras
+
+julia> with_logger(FormatLogger(LoggingFormats.LogFmt((:level, :message, :file)), stderr)) do
+           @info "hello, world" extra="bye"
+           @error "something is wrong"
+       end
+level=info msg="hello, world" file="REPL[5]" extra="bye"
+level=error msg="something is wrong" file="REPL[5]"
+```
+
+Note here that the `module`, `group`, `id` do not appear, since they weren't specified, but the "custom" key `extra` still appears. The full set of standard keys is `(:level, :msg, :module, :file, :line, :group, :id)`, which are all used by default, in that order.
+
 ## `Truncated`: Truncate long variables and messages
 
 `LoggingFormats.Truncated(max_var_len=5_000)` is a function which formats data in similar manner as `ConsoleLogger`,
