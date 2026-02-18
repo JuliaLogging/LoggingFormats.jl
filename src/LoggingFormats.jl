@@ -1,6 +1,7 @@
 module LoggingFormats
 
-import Logging, JSON3
+import Logging
+import JSON as JSONLib
 
 const STANDARD_KEYS = (:level, :msg, :module, :file, :line, :group, :id)
 
@@ -124,7 +125,7 @@ function (j::JSON)(io, args)
     if j.recursive
         logmsg = to_namedtuple(Any, args; nest_kwargs=j.nest_kwargs)
         try
-            JSON3.write(io, logmsg)
+            JSONLib.json(io, logmsg)
         catch e
             if j.nest_kwargs
                 fallback_msg = to_namedtuple(String, args; nest_kwargs=true)
@@ -132,11 +133,11 @@ function (j::JSON)(io, args)
             else
                 fallback_msg = (; to_namedtuple(String, args; nest_kwargs=false)..., Symbol("LoggingFormats.FormatError") => sprint(showerror, e))
             end
-            JSON3.write(io, fallback_msg)
+            JSONLib.json(io, fallback_msg)
         end
     else
         logmsg = to_namedtuple(String, args; nest_kwargs=j.nest_kwargs)
-        JSON3.write(io, logmsg)
+        JSONLib.json(io, logmsg)
     end
     println(io)
     return nothing

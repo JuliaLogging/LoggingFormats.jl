@@ -2,7 +2,7 @@ using Test: @test, @testset, @test_throws
 using Logging: Logging, with_logger
 using LoggingExtras: FormatLogger
 using LoggingFormats: LoggingFormats, Truncated, JSON, LogFmt
-import JSON3
+import JSON as JSONLib
 
 function my_throwing_function()
     throw(ArgumentError("no"))
@@ -70,7 +70,7 @@ end
         @warn "warn msg"
         @error "error msg"
     end
-    json = [JSON3.read(x) for x in eachline(seekstart(io))]
+    json = [JSONLib.parse(x) for x in eachline(seekstart(io))]
     @test json[1].level == "debug"
     @test json[1].msg == "debug msg"
     @test json[2].level == "info"
@@ -90,7 +90,7 @@ end
         y = (1, 2)
         @info "info msg" x = [1, 2, 3] y
     end
-    json = JSON3.read(seekstart(io))
+    json = JSONLib.parse(seekstart(io))
     @test json.level == "info"
     @test json.msg == "info msg"
     @test json.module == "Main"
@@ -105,7 +105,7 @@ end
         y = (1, 2)
         @info "info msg" x = [1, 2, 3] y
     end
-    json = JSON3.read(seekstart(io))
+    json = JSONLib.parse(seekstart(io))
     @test json.level == "info"
     @test json.msg == "info msg"
     @test json.module == "Main"
@@ -120,7 +120,7 @@ end
     with_logger(FormatLogger(JSON(; nest_kwargs=false), io)) do
         @info "info msg" line = [1, 2, 3]
     end
-    json = JSON3.read(seekstart(io))
+    json = JSONLib.parse(seekstart(io))
     @test json.level == "info"
     @test json.msg == "info msg"
     @test json.module == "Main"
@@ -133,13 +133,13 @@ end
     with_logger(FormatLogger(JSON(; recursive=true), io)) do
         @info "info msg" x = [1, 2, 3] y = Dict("hi" => Dict("hi2" => [1,2]))
     end
-    json = JSON3.read(seekstart(io))
+    json = JSONLib.parse(seekstart(io))
     @test json.level == "info"
     @test json.msg == "info msg"
     @test json.module == "Main"
     @test json.line isa Int
     @test json.kwargs.x == [1, 2, 3]
-    @test json.kwargs.y == Dict(:hi => Dict(:hi2 => [1,2]))
+    @test json.kwargs.y == Dict("hi" => Dict("hi2" => [1,2]))
 
     # Fallback to strings
     for nest_kwargs in (true, false)
@@ -147,18 +147,18 @@ end
         with_logger(FormatLogger(JSON(; recursive=true, nest_kwargs=nest_kwargs), io)) do
             @info "info msg" x = [1, 2, 3] y = Dict("hi" => NaN)
         end
-        json = JSON3.read(seekstart(io))
+        json = JSONLib.parse(seekstart(io))
         @test json.level == "info"
         @test json.msg == "info msg"
         @test json.module == "Main"
         @test json.line isa Int
         if nest_kwargs
             @test json.kwargs.x == "[1, 2, 3]"
-            @test json.kwargs[Symbol("LoggingFormats.FormatError")] == "NaN not allowed to be written in JSON spec"
+            @test occursin("NaN not allowed to be written in JSON spec", json.kwargs[Symbol("LoggingFormats.FormatError")])
             y = json.kwargs.y
         else
             @test json.x == "[1, 2, 3]"
-            @test json[Symbol("LoggingFormats.FormatError")] == "NaN not allowed to be written in JSON spec"
+            @test occursin("NaN not allowed to be written in JSON spec", json[Symbol("LoggingFormats.FormatError")])
             y = json.y
         end
         must_have = ("Dict", "\"hi\"", "=>", "NaN")
@@ -172,7 +172,7 @@ end
         with_logger(FormatLogger(JSON(; recursive=recursive, nest_kwargs=nest_kwargs), io)) do
             @error "Oh no" exception = ArgumentError("no")
         end
-        logs = JSON3.read(seekstart(io))
+        logs = JSONLib.parse(seekstart(io))
         @test logs["msg"] == "Oh no"
         ex = nest_kwargs ? logs["kwargs"]["exception"] : logs["exception"]
         @test ex == "ArgumentError: no"
@@ -182,7 +182,7 @@ end
         with_logger(FormatLogger(JSON(; recursive=recursive, nest_kwargs=nest_kwargs), io)) do
             @error "Oh no" ex = ArgumentError("no")
         end
-        logs = JSON3.read(seekstart(io))
+        logs = JSONLib.parse(seekstart(io))
         @test logs["msg"] == "Oh no"
         ex = nest_kwargs ? logs["kwargs"]["ex"] : logs["ex"]
         @test ex == "ArgumentError: no"
@@ -196,7 +196,7 @@ end
                 @error "Oh no" exception = (e, catch_backtrace())
             end
         end
-        logs = JSON3.read(seekstart(io))
+        logs = JSONLib.parse(seekstart(io))
         @test logs["msg"] == "Oh no"
 
         ex = nest_kwargs ? logs["kwargs"]["exception"] : logs["exception"]
@@ -279,5 +279,5 @@ end
     # write(in, str)
     # close(in)
     # wait(p)
-    # output = JSON3.read(read(out))
+    # output = JSONLib.parse(read(out))
 end
